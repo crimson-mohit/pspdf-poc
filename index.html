@@ -10,7 +10,32 @@
     body {
       margin: 0;
     }
-    #root, .document {
+    .pspdfkit-container {
+      display: flex;
+    }
+    .pspdfkit-container > .left-pane {
+      flex: 0 0 20%;
+      padding: 20px 10px;
+      background: grey;
+    }
+    .pspdfkit-container > .right-pane {
+      flex: flex;
+      width: calc(100%);
+      height: calc(100vh);
+    }
+    .left-pane > .left-pane-content {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+    .left-pane-content > span {
+      color: white;
+      padding: 5px 10px;
+      border: 1px solid #FFFFFF;
+      border-radius: 15px;
+      cursor: pointer;
+    }
+    #root {
       display: flex;
       width: calc(100%);
       height: calc(100vh);
@@ -24,19 +49,12 @@
 
 <body>
   <div id="pspdfkit-app">
-    <div style="display: flex;">
-      <div style="flex: 0 0 295px; padding: 20px 10px; background: grey;">
-        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+    <div class="pspdfkit-container">
+      <div class="left-pane">
+        <div class="left-pane-content">
           <span
           v-for="(item) in pspdfkitWrapper.toolbarItems"
           :key="item.type"
-          style="
-          color: white;
-          padding: 5px 10px;
-          border: 1px solid #FFFFFF;
-          border-radius: 15px;
-          cursor: pointer;
-          "
           :style="{'background': item.isSelected ? 'blue' : 'grey'}"
           @click="updateToolbar(item)"
           >
@@ -45,7 +63,7 @@
       </div>
     </div>
 
-    <main class="document">
+    <main class="right-pane">
       <div id="root" class="viewer">
         <div id="pspdfkit"></div>
       </div>
@@ -76,10 +94,9 @@
     async mounted() {
       await this.delay(2000);
 
-      this.loadPSPDFKit().then(async (instance) => {
-        console.log('loaded ===> ', instance);
-        this.pspdfkitWrapper.instance = instance;
+      this.loadPSPDFKit(this.pspdfkitWrapper.pspdfConfiguration.container).then(async (instance) => {
         this.$emit("loaded", instance);
+        this.pspdfkitWrapper.instance = instance;
 
         const toolbarItems = instance.toolbarItems;
         this.pspdfkitWrapper.toolbarItems = toolbarItems.map(v => ({...v, isSelected: true}));
@@ -102,9 +119,9 @@
           setTimeout(() => { resolve(true) }, millisec);
         });
       },
-      async loadPSPDFKit() {
-        PSPDFKit = PSPDFKit;
-        PSPDFKit.unload("#pspdfkit");
+      async loadPSPDFKit(container) {
+        this.pspdfkitWrapper.PSPDFKit = PSPDFKit;
+        PSPDFKit.unload(container);
 
         return PSPDFKit.load({
           ...this.pspdfkitWrapper.pspdfConfiguration,
@@ -123,13 +140,13 @@
 
           const customMenu = this.generateMenuElement();
 
-          const rectsObject = PSPDFKit.Geometry.Rect.union(rects).toJS();
+          const rectsObject = this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(rects).toJS();
 
-          const item = new PSPDFKit.CustomOverlayItem({
+          const item = new this.pspdfkitWrapper.PSPDFKit.CustomOverlayItem({
             id: "custom-pspdfkit-tooltip-overlay",
             node: customMenu,
             pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
-            position: new PSPDFKit.Geometry.Point({
+            position: new this.pspdfkitWrapper.PSPDFKit.Geometry.Point({
               x: rectsObject.left + rectsObject.width,
               y: rectsObject.top
             }),
@@ -142,7 +159,9 @@
           this.pspdfkitWrapper.instance.setCustomOverlayItem(item);
         } else {
           if(this.isContextMenuOpen) {
-            this.pspdfkitWrapper.instance.removeCustomOverlayItem("custom-pspdfkit-tooltip-overlay");
+            setTimeout(() => { // throwing error without timeout
+              this.pspdfkitWrapper.instance.removeCustomOverlayItem("custom-pspdfkit-tooltip-overlay");
+            }, 0);
           }
         }
       },
@@ -177,7 +196,7 @@
         const customMenu = document.createElement("div");
         customMenu.onpointerup = e => {
           e.stopPropagation();
-          console.log('onpointerup ===> ', e, e.target.getAttribute('data-id'));
+          console.log('onpointerup ===> ', e.target.getAttribute('data-id'));
           this.isContextMenuOpen = false;
           this.pspdfkitWrapper.instance.removeCustomOverlayItem("custom-pspdfkit-tooltip-overlay");
         }
@@ -194,18 +213,6 @@
         `;
 
         return customMenu;
-      },
-      async calculateNewPosition(instance, textSelection, pspdfkitInstance) {
-        const offset = await textSelection?.getText().toString().length;
-        const { left, top, width } = instance.transformClientToPageSpace(
-        new pspdfkitInstance.Geometry.Rect(await textSelection?.getBoundingClientRect()),
-        instance.viewState.currentPageIndex
-        );
-
-        return new pspdfkitInstance.Geometry.Point({
-          x: left + (width + 255),
-          y: top - (offset + 45)
-        });
       }
     }
   });
