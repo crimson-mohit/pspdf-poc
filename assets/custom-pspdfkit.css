@@ -1,0 +1,31 @@
+/*
+.PSPDFKit-Text-Markup-Inline-Toolbar-Strike-Out,
+.PSPDFKit-Text-Markup-Inline-Toolbar-Underline,
+.PSPDFKit-Text-Markup-Inline-Toolbar-Squiggle {
+  display: none;
+}
+.PSPDFKit-Popover-Text-Markup-Toolbar {
+  display: none;
+}
+*/
+
+.PSPDFKit-Popover-Text-Markup-Toolbar {
+  display: none !important;
+}
+
+#context-menu {
+  list-style: none;
+  padding: 0;
+  background-color: #4caf50;
+  font-size: 16px;
+  border: none;
+}
+#context-menu > li {
+  padding: 5px 10px;
+  background-color: #FFFFFF;
+}
+#context-menu > li:hover {
+  background-color: #3e8e41;
+  color: white;
+}
+

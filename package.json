@@ -1,0 +1,10 @@
+{
+  "name": "pspdf-poc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Mohit Patil <mohit.patil@crimsoni.com>",
+  "license": "MIT",
+  "dependencies": {
+    "pspdfkit": "^2022.4.1"
+  }
+}

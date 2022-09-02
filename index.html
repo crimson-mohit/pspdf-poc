@@ -1,0 +1,214 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PSPDFKIT POC</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+  <script src="assets/pspdfkit.js"></script>
+  <style>
+    body {
+      margin: 0;
+    }
+    #root, .document {
+      display: flex;
+      width: calc(100%);
+      height: calc(100vh);
+    }
+    #pspdfkit {
+      width: calc(100%);
+      height: calc(100vh);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="pspdfkit-app">
+    <div style="display: flex;">
+      <div style="flex: 0 0 295px; padding: 20px 10px; background: grey;">
+        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+          <span
+          v-for="(item) in pspdfkitWrapper.toolbarItems"
+          :key="item.type"
+          style="
+          color: white;
+          padding: 5px 10px;
+          border: 1px solid #FFFFFF;
+          border-radius: 15px;
+          cursor: pointer;
+          "
+          :style="{'background': item.isSelected ? 'blue' : 'grey'}"
+          @click="updateToolbar(item)"
+          >
+          {{ item.type }}
+        </span>
+      </div>
+    </div>
+
+    <main class="document">
+      <div id="root" class="viewer">
+        <div id="pspdfkit"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  new Vue({
+    el: '#pspdfkit-app',
+    data: {
+      pspdfkitWrapper: {
+        PSPDFKit: null,
+        instance: null,
+        pspdfConfiguration: {
+          container: "#pspdfkit",
+          document: "./assets/document-mark3.pdf",
+          styleSheets: [
+          "./assets/custom-pspdfkit.css"
+          ],
+          disableTextSelection: false
+        },
+        toolbarItems: [],
+        listOfAnnotation: [],
+        isContextMenuOpen: false
+      }
+    },
+    async mounted() {
+      await this.delay(2000);
+
+      this.loadPSPDFKit().then(async (instance) => {
+        console.log('loaded ===> ', instance);
+        this.pspdfkitWrapper.instance = instance;
+        this.$emit("loaded", instance);
+
+        const toolbarItems = instance.toolbarItems;
+        this.pspdfkitWrapper.toolbarItems = toolbarItems.map(v => ({...v, isSelected: true}));
+        instance.setToolbarItems(this.pspdfkitWrapper.toolbarItems);
+
+        instance.addEventListener("textSelection.change", this.textSelectionChange);
+        instance.contentDocument.addEventListener("mouseup", this.contentDocumentMouseup);
+
+        instance.addEventListener("annotations.load", this.annotationsLoad);
+        instance.addEventListener("annotations.willChange", this.annotationsWillChange);
+        instance.addEventListener("annotations.change", this.annotationsChange);
+        instance.addEventListener("annotations.create", this.annotationsCreate);
+        instance.addEventListener("annotations.update", this.annotationsUpdate);
+        instance.addEventListener("annotations.delete", this.annotationsDelete);
+      });
+    },
+    methods: {
+      delay(millisec) {
+        return new Promise(resolve => {
+          setTimeout(() => { resolve(true) }, millisec);
+        });
+      },
+      async loadPSPDFKit() {
+        PSPDFKit = PSPDFKit;
+        PSPDFKit.unload("#pspdfkit");
+
+        return PSPDFKit.load({
+          ...this.pspdfkitWrapper.pspdfConfiguration,
+          initialViewState: PSPDFKit.viewStateFromOpenParameters(new PSPDFKit.ViewState({ showToolbar: true }) )
+        });
+      },
+      async textSelectionChange(textSelection) {
+        if (textSelection) {
+          const rectsForPage = await textSelection.getSelectedRectsPerPage(
+          this.pspdfkitWrapper.instance.viewState.currentPageIndex
+          );
+
+          const { rects } = rectsForPage.find((rectsPerPage) =>
+          rectsPerPage.pageIndex === this.pspdfkitWrapper.instance.viewState.currentPageIndex
+          );
+
+          const customMenu = this.generateMenuElement();
+
+          const rectsObject = PSPDFKit.Geometry.Rect.union(rects).toJS();
+
+          const item = new PSPDFKit.CustomOverlayItem({
+            id: "custom-pspdfkit-tooltip-overlay",
+            node: customMenu,
+            pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
+            position: new PSPDFKit.Geometry.Point({
+              x: rectsObject.left + rectsObject.width,
+              y: rectsObject.top
+            }),
+            onAppear: () => {
+              console.log("custom menu appeared !!!");
+            }
+          });
+
+          this.isContextMenuOpen = true;
+          this.pspdfkitWrapper.instance.setCustomOverlayItem(item);
+        } else {
+          if(this.isContextMenuOpen) {
+            this.pspdfkitWrapper.instance.removeCustomOverlayItem("custom-pspdfkit-tooltip-overlay");
+          }
+        }
+      },
+      contentDocumentMouseup(event) {
+        console.log('contentDocument mouseup ===> ', event);
+      },
+      annotationsLoad(loadedAnnotations) {
+        console.log('annotations.load ===> ', loadedAnnotations);
+      },
+      annotationsWillChange(event) {
+        if (event.reason === this.pspdfkitWrapper.PSPDFKit.AnnotationsWillChangeReason.DRAW_START) {
+          console.log("The user is drawing...");
+        }
+      },
+      annotationsChange() {
+        console.log("Something in the annotations has changed.");
+      },
+      annotationsCreate(createdAnnotations) {
+        console.log('annotations.create ===> ', createdAnnotations);
+      },
+      annotationsUpdate(updatedAnnotations) {
+        console.log('annotations.update ===> ', updatedAnnotations);
+      },
+      annotationsDelete(deletedAnnotations) {
+        console.log('annotations.delete ===> ', deletedAnnotations);
+      },
+      updateToolbar(item) {
+        item.isSelected = !item.isSelected;
+        this.pspdfkitWrapper.instance.setToolbarItems(this.pspdfkitWrapper.toolbarItems.filter((item) => item.isSelected));
+      },
+      generateMenuElement() {
+        const customMenu = document.createElement("div");
+        customMenu.onpointerup = e => {
+          e.stopPropagation();
+          console.log('onpointerup ===> ', e, e.target.getAttribute('data-id'));
+          this.isContextMenuOpen = false;
+          this.pspdfkitWrapper.instance.removeCustomOverlayItem("custom-pspdfkit-tooltip-overlay");
+        }
+        customMenu.className = "custom-pspdfkit-tooltip-overlay"
+        customMenu.innerHTML = `
+        <ul id="context-menu">
+          <li data-id="about">About</li>
+          <li data-id="calendar">Calendar</li>
+          <li data-id="courses">Courses</li>
+          <li data-id="contact">Contact Us</li>
+          <li data-id="faculty">Faculty Directory</li>
+          <li data-id="login">Login</li>
+        </ul>
+        `;
+
+        return customMenu;
+      },
+      async calculateNewPosition(instance, textSelection, pspdfkitInstance) {
+        const offset = await textSelection?.getText().toString().length;
+        const { left, top, width } = instance.transformClientToPageSpace(
+        new pspdfkitInstance.Geometry.Rect(await textSelection?.getBoundingClientRect()),
+        instance.viewState.currentPageIndex
+        );
+
+        return new pspdfkitInstance.Geometry.Point({
+          x: left + (width + 255),
+          y: top - (offset + 45)
+        });
+      }
+    }
+  });
+</script>
+</body>
+</html>
