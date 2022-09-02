@@ -16,16 +16,18 @@
 #context-menu {
   list-style: none;
   padding: 0;
-  background-color: #4caf50;
-  font-size: 16px;
+  background-color: grey;
+  font-size: 10px;
   border: none;
+  margin: 0;
 }
 #context-menu > li {
-  padding: 5px 10px;
+  padding: 0px 15px;
   background-color: #FFFFFF;
 }
 #context-menu > li:hover {
   background-color: #3e8e41;
   color: white;
+  cursor: pointer;
 }
 
