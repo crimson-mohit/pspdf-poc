@@ -257,11 +257,10 @@
       },
 
       async getAllAnnotations(native = false) {
-        let pagesAnnotations = await Promise.all(
-          Array.from({
-            length: this.pspdfkitWrapper.instance.totalPageCount
-          }).map((_, pageIndex) =>
-          this.pspdfkitWrapper.instance.getAnnotations(pageIndex)
+        let pagesAnnotations = await Promise.all(Array.from({
+          length: this.pspdfkitWrapper.instance.totalPageCount
+        }).map((_, pageIndex) =>
+        this.pspdfkitWrapper.instance.getAnnotations(pageIndex)
         ));
 
         if(native) return pagesAnnotations;
