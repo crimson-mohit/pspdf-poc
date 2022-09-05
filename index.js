@@ -240,7 +240,7 @@
       },
 
       async highlightAnnotation(rects, color, id = null) {
-        let annotationsLength = (await this.getAllAnnotations()).length;
+        let annotationsLength = this.pspdfkitWrapper.listOfAnnotation.length;
         let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation({
           id: id ? id : `highlight-${annotationsLength}`,
           pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,

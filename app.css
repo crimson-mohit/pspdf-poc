@@ -58,8 +58,9 @@ body {
   /* text-shadow: 0 5px #ac14c2, 0 10px #ac14c2, 5px 0 #ac14c2, 5px 5px #ac14c2, 5px 10px #ac14c2, 10px 0 #ac14c2, 10px 5px #ac14c2, 10px 10px #ac14c2; */
 }
 .container__left {
-  width: 25%;
+  position: relative;
   display: flex;
+  width: 25%;
   flex-direction: column;
   padding: 5px;
 }
