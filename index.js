@@ -97,12 +97,16 @@
         return annotation;
       },
 
-      async toggleAnnotation(selectedAnnotation) {
-        if(selectedAnnotation.metadata.isAttached) {
+      async toggleAnnotation(selectedAnnotation, completeRemove = false) {
+        if(selectedAnnotation.metadata.isAttached || completeRemove) {
           let annotation = await this.getNativeAnnotationById(selectedAnnotation.id);
           if(annotation) {
             await this.pspdfkitWrapper.instance.delete(annotation);
             selectedAnnotation.metadata.isAttached = false;
+          }
+
+          if(completeRemove) {
+            this.pspdfkitWrapper.listOfAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id !== selectedAnnotation.id);
           }
         } else {
           this.currentTextSelection = selectedAnnotation.metadata.currentTextSelection;
@@ -195,6 +199,10 @@
 
       annotationsDelete(annotations) {
         console.log('annotations.delete ===> ', annotations);
+        annotations.forEach(annotation => {
+          let tempAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(anno => anno.id === annotation.id)[0];
+          if(tempAnnotation) tempAnnotation.metadata.isAttached = false;
+        });
       },
 
       annotationsPress(event) {
