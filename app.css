@@ -12,26 +12,67 @@ body {
 .pspdfkit-container {
   display: flex;
 }
-.pspdfkit-container > .left-pane {
-  flex: 0 0 20%;
+
+.pane-container {
+  display: flex;
+  border: 1px solid #cbd5e0;
+  height: calc(100vh - 2px);
+  width: calc(100% - 2px);
+}
+.resizer[data-direction='horizontal'] {
+  background-color: #cbd5e0;
+  cursor: ew-resize;
+  height: 100%;
+  width: 2px;
+}
+.resizer[data-direction='vertical'] {
+  background-color: #cbd5e0;
+  cursor: ns-resize;
+  height: 2px;
+  width: 100%;
+}
+.container__left {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+}
+.container__right {
+  flex: 1;
+  display: flex;
+  padding: 5px;
+}
+.container__top {
+  height: 50%;
+  display: flex;
+  overflow-y: scroll;
+  padding: 5px;
+}
+.container__bottom {
+  flex: 1;
+  display: flex;
+  overflow-y: scroll;
+  padding: 5px;
+}
+
+.left-pane {
+  /* flex: 0 0 20%; */
+  width: 25%;
   padding: 20px 10px;
   background: grey;
 }
-.pspdfkit-container > .right-pane {
+.right-pane {
   flex: flex;
   width: calc(100%);
   height: calc(100vh);
 }
-.left-pane > .left-pane-content {
+.left-pane-content {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
 }
 .left-pane-content > span {
-  color: white;
-  padding: 5px 10px;
-  border: 1px solid #FFFFFF;
-  border-radius: 15px;
+  height: 20px;
   cursor: pointer;
 }
 #root {

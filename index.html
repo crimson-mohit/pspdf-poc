@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PSPDFKIT POC</title>
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon.ico">
+  <!-- CSS only -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
   <link rel="stylesheet" href="./app.css" />
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
-  <script src="assets/pspdfkit.js"></script>
+  <script src="./assets/pspdfkit.js"></script>
 </head>
 
 <body>
@@ -18,25 +20,55 @@
     </div>
 
     <div v-show="!timer" class="pspdfkit-container">
-      <div class="left-pane">
-        <div class="left-pane-content">
-          <span
-          v-for="(item) in pspdfkitWrapper.toolbarItems"
-          :key="item.type"
-          :style="{'background': item.isSelected ? 'blue' : 'grey'}"
-          @click="updateToolbar(item)"
-          >{{ item.type }}</span>
+      <div class="pane-container">
+        <div class="container__left">
+          <div class="container__top">
+
+            <div class="accordion" style="width: 100%;">
+              <ul class="list-group">
+                <li class="list-group-item" v-for="(item, index) in pspdfkitWrapper.listOfAnnotation" :key="item.type">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.id }}({{ item.metadata.type }})</span>
+                    <span class="badge badge-pill float-right" :class="item.metadata.isAttached ? 'badge-success' : 'badge-danger'" style="cursor: pointer;" @click.stop="toggleAnnotation(item)">
+                      {{ item.metadata.isAttached ? 'Attached' : 'Attach'}}
+                    </span>
+                  </div>
+                  <div v-show="item.metadata.isOpen" style="border-top: 1px solid rgb(238, 238, 238); padding-top: 5px; margin-top: 5px;">
+                    <pre>{{ item }}</pre>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+          <div class="resizer" data-direction="vertical"></div>
+          <div class="container__bottom">
+            <div class="left-pane-content">
+              <span
+              v-for="(item) in pspdfkitWrapper.toolbarItems"
+              :key="item.type"
+              class="badge badge-pill"
+              :class="item.isSelected ? 'badge-primary' : 'badge-secondary'"
+              @click="updateToolbar(item)"
+              >{{ item.type }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="resizer" data-direction="horizontal"></div>
+        <div class="container__right">
+          <main class="right-pane">
+            <div id="root" class="viewer">
+              <div id="pspdfkit"></div>
+            </div>
+          </main>
         </div>
       </div>
-
-      <main class="right-pane">
-        <div id="root" class="viewer">
-          <div id="pspdfkit"></div>
-        </div>
-      </main>
     </div>
   </div>
 
+
+
+  <script src="./resizer.js"></script>
   <script src="./index.js"></script>
 </body>
 </html>
