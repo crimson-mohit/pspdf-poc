@@ -18,6 +18,7 @@ body {
   border: 1px solid #cbd5e0;
   height: calc(100vh - 2px);
   width: calc(100% - 2px);
+  overflow: hidden;
 }
 .resizer[data-direction='horizontal'] {
   background-color: #cbd5e0;
