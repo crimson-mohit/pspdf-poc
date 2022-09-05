@@ -1,4 +1,11 @@
 (() => {
+  const COLORS = {
+    'highlight': PSPDFKit.Color.YELLOW,
+    'note': PSPDFKit.Color.RED,
+    'comment': PSPDFKit.Color.ORANGE,
+    'link': PSPDFKit.Color.PINK
+  };
+
   new Vue({
     el: '#pspdfkit-app',
     props: {},
@@ -82,38 +89,6 @@
         });
       },
 
-      async getNativeAnnotationById(id) {
-        let allAnnotations = await this.getAllAnnotations(true);
-
-        let annotation = null;
-        for(let i = 0, l = allAnnotations.length; i < l; i++) {
-          for(let j = 0, len = allAnnotations[i].toJS().length; j < len; j++) {
-            if(allAnnotations[i].toJS()[j].id === id) {
-              annotation = allAnnotations[i].get(j);
-              break;
-            }
-          }
-        }
-        return annotation;
-      },
-
-      async toggleAnnotation(selectedAnnotation, completeRemove = false) {
-        if(selectedAnnotation.metadata.isAttached || completeRemove) {
-          let annotation = await this.getNativeAnnotationById(selectedAnnotation.id);
-          if(annotation) {
-            await this.pspdfkitWrapper.instance.delete(annotation);
-            selectedAnnotation.metadata.isAttached = false;
-          }
-
-          if(completeRemove) {
-            this.pspdfkitWrapper.listOfAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id !== selectedAnnotation.id);
-          }
-        } else {
-          this.currentTextSelection = selectedAnnotation.metadata.currentTextSelection;
-          this.onContextMenuSelection(selectedAnnotation.metadata.type, selectedAnnotation.id);
-        }
-      },
-
       async textSelectionChange(textSelection) {
         if (textSelection) {
           this.currentTextSelection = {
@@ -195,13 +170,19 @@
 
       annotationsUpdate(annotations) {
         console.log('annotations.update ===> ', annotations);
+        annotations.forEach(annotation => {
+          const annotationById = this.getAnnotationById(annotation.id);
+          const index = this.findAnnotationIndexById(annotation.id);
+
+          this.pspdfkitWrapper.listOfAnnotation.splice(index, 1, {...annotationById, ...annotation.toJS()});
+        });
       },
 
       annotationsDelete(annotations) {
         console.log('annotations.delete ===> ', annotations);
         annotations.forEach(annotation => {
-          let tempAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(anno => anno.id === annotation.id)[0];
-          if(tempAnnotation) tempAnnotation.metadata.isAttached = false;
+          const annotationById = this.getAnnotationById(annotation.id);
+          annotationById.metadata.isAttached = false;
         });
       },
 
@@ -222,6 +203,51 @@
       updateToolbar(item) {
         item.isSelected = !item.isSelected;
         this.pspdfkitWrapper.instance.setToolbarItems(this.pspdfkitWrapper.toolbarItems.filter((item) => item.isSelected));
+      },
+
+      async toggleAnnotation(selectedAnnotation, completeRemove = false) {
+        if(selectedAnnotation.metadata.isAttached || completeRemove) {
+          let annotation = await this.getNativeAnnotationById(selectedAnnotation.id);
+          if(annotation) {
+            await this.pspdfkitWrapper.instance.delete(annotation);
+            selectedAnnotation.metadata.isAttached = false;
+          }
+
+          if(completeRemove) {
+            this.pspdfkitWrapper.listOfAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id !== selectedAnnotation.id);
+          }
+        } else {
+          this.currentTextSelection = selectedAnnotation.metadata.currentTextSelection;
+          this.onContextMenuSelection(selectedAnnotation.metadata.type, selectedAnnotation.id);
+        }
+      },
+
+      async createHighlightAnnotation(params) {
+        let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation({
+          pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
+          boundingBox: this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(params.rects),
+          isEditable: true,
+          isDeletable: true,
+          opacity: 0.7,
+          noView: false, // hide annotation
+          ...params, // overwrite fields
+          rects: params.rects,
+          color: params.color
+        });
+
+        return annotation;
+      },
+
+      findAnnotationIndexById(id) {
+        return this.pspdfkitWrapper.listOfAnnotation.findIndex(anno => anno.id === id);
+      },
+
+      getAnnotationById(id) {
+        return this.pspdfkitWrapper.listOfAnnotation.filter(anno => anno.id === id)[0];
+      },
+
+      getColorByAction(action) {
+        return COLORS[action];
       },
 
       async hasAnnotations() {
@@ -247,39 +273,55 @@
         return allAnnotations;
       },
 
-      async highlightAnnotation(rects, color, id = null) {
-        let annotationsLength = this.pspdfkitWrapper.listOfAnnotation.length;
-        let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation({
-          id: id ? id : `highlight-${annotationsLength}`,
-          pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
-          rects: rects,
-          boundingBox: this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(rects),
-          color: color,
-          isEditable: true,
-          isDeletable: true,
-          opacity: 0.7,
-          noView: false // hide annotation
-        });
+      async getNativeAnnotationById(id) {
+        let allAnnotations = await this.getAllAnnotations(true);
 
+        let annotation = null;
+        for(let i = 0, l = allAnnotations.length; i < l; i++) {
+          for(let j = 0, len = allAnnotations[i].toJS().length; j < len; j++) {
+            if(allAnnotations[i].toJS()[j].id === id) {
+              annotation = allAnnotations[i].get(j);
+              break;
+            }
+          }
+        }
         return annotation;
       },
 
-      async onContextMenuSelection(action, id = null) {
+      async onContextMenuSelection(action, id = null, fromAction = 'highlight') {
+        let annotationsLength = this.pspdfkitWrapper.listOfAnnotation.length;
+        let fieldsToPickFromExistingAnnotation = ['note', 'isEditable', 'isDeletable', 'opacity', 'noView'];
+        let existingAnnotation = this.getAnnotationById(id) || null;
+        let existingAnnotationParams = { id: id ? id : `highlight-${fromAction}-${annotationsLength}` };
+
+        console.log('existingAnnotation ===> ', existingAnnotation);
+        if(existingAnnotation) {
+          fieldsToPickFromExistingAnnotation.forEach(field => {
+            existingAnnotationParams[field] = existingAnnotation[field];
+          });
+        }
+
         switch (action) {
           case 'highlight': {
             var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
               new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.calculatedRect)
             ]);
 
-            let annotation = await this.highlightAnnotation(rects, this.pspdfkitWrapper.PSPDFKit.Color.YELLOW, id);
+            let params = {
+              ...existingAnnotationParams,
+              ...{ rects, color: this.getColorByAction(fromAction) }
+            };
+
+            let annotation = await this.createHighlightAnnotation(params);
             this.pspdfkitWrapper.instance.create(annotation);
+
             if(!id) {
               this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
                 metadata: {
                   isOpen: false,
                   isAttached: true,
                   currentTextSelection: this.currentTextSelection,
-                  type: action
+                  type: fromAction
                 }
               }});
             } else {
@@ -290,71 +332,17 @@
           break;
 
           case 'note': {
-            var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
-              new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.calculatedRect)
-            ]);
-
-            let annotation = await this.highlightAnnotation(rects, this.pspdfkitWrapper.PSPDFKit.Color.RED, id);
-            this.pspdfkitWrapper.instance.create(annotation);
-            if(!id) {
-              this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
-                metadata: {
-                  isOpen: false,
-                  isAttached: true,
-                  currentTextSelection: this.currentTextSelection,
-                  type: action
-                }
-              }});
-            } else {
-              let temp = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id === id)[0];
-              temp.metadata.isAttached = true;
-            }
+            this.onContextMenuSelection('highlight', id, 'note');
           }
           break;
 
           case 'comment': {
-            var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
-              new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.calculatedRect)
-            ]);
-
-            let annotation = await this.highlightAnnotation(rects, this.pspdfkitWrapper.PSPDFKit.Color.ORANGE, id);
-            this.pspdfkitWrapper.instance.create(annotation);
-            if(!id) {
-              this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
-                metadata: {
-                  isOpen: false,
-                  isAttached: true,
-                  currentTextSelection: this.currentTextSelection,
-                  type: action
-                }
-              }});
-            } else {
-              let temp = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id === id)[0];
-              temp.metadata.isAttached = true;
-            }
+            this.onContextMenuSelection('highlight', id, 'comment');
           }
           break;
 
           case 'link': {
-            var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
-              new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.calculatedRect)
-            ]);
-
-            let annotation = await this.highlightAnnotation(rects, this.pspdfkitWrapper.PSPDFKit.Color.PINK, id);
-            this.pspdfkitWrapper.instance.create(annotation);
-            if(!id) {
-              this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
-                metadata: {
-                  isOpen: false,
-                  isAttached: true,
-                  currentTextSelection: this.currentTextSelection,
-                  type: action
-                }
-              }});
-            } else {
-              let temp = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id === id)[0];
-              temp.metadata.isAttached = true;
-            }
+            this.onContextMenuSelection('highlight', id, 'link');
           }
           break;
 

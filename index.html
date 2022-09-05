@@ -28,7 +28,7 @@
               <ul class="list-group">
                 <li class="list-group-item" v-for="(item, index) in pspdfkitWrapper.listOfAnnotation" :key="item.type">
                   <div class="d-flex justify-content-between align-items-center">
-                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.id }}({{ item.metadata.type }})</span>
+                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.id }}</span>
                     <span>
                       <span class="badge badge-pill" :class="item.metadata.isAttached ? 'badge-success' : 'badge-danger'" style="cursor: pointer;" @click.stop="toggleAnnotation(item, false)">
                         {{ item.metadata.isAttached ? 'Attached' : 'Attach'}}
