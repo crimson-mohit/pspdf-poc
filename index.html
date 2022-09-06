@@ -30,8 +30,8 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.id }}</span>
                     <span>
-                      <span class="badge badge-pill" :class="item.metadata.isAttached ? 'badge-success' : 'badge-danger'" style="cursor: pointer;" @click.stop="toggleAnnotation(item, false)">
-                        {{ item.metadata.isAttached ? 'Attached' : 'Attach'}}
+                      <span class="badge badge-pill" :class="item.customData.isAttached ? 'badge-success' : 'badge-danger'" style="cursor: pointer;" @click.stop="toggleAnnotation(item, false)">
+                        {{ item.customData.isAttached ? 'Attached' : 'Attach'}}
                       </span>
                       <span class="badge badge-pill badge-secondary" style="cursor: pointer;" @click.stop="toggleAnnotation(item, true)">
                         X
@@ -39,7 +39,7 @@
                     </span>
 
                   </div>
-                  <div v-show="item.metadata.isOpen" style="border-top: 1px solid rgb(238, 238, 238); padding-top: 5px; margin-top: 5px;">
+                  <div v-show="item.customData.isOpen" style="border-top: 1px solid rgb(238, 238, 238); padding-top: 5px; margin-top: 5px;">
                     <pre>{{ item }}</pre>
                   </div>
                 </li>

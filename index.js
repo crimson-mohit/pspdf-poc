@@ -43,6 +43,28 @@
       this.loadPSPDFKit(this.pspdfkitWrapper.pspdfConfiguration.container).then(async (instance) => {
         this.$emit("loaded", instance);
         this.pspdfkitWrapper.instance = instance;
+
+        const state = instance.viewState;
+        const newState = state.set("enableAnnotationToolbar", false);
+        instance.setViewState(newState);
+
+        function attachListener() {
+          instance.contentDocument
+          .querySelector(".PSPDFKit-Page-Indicator-Input")
+          .addEventListener("click", () => {
+            console.log("Click!");
+          });
+        }
+
+        attachListener();
+
+        instance.addEventListener("viewState.currentPageIndex.change", e => {
+          // Wrap on setTimeout to wait for next event loop run
+          setTimeout(() => {
+            attachListener();
+          });
+        });
+
         console.log('this.pspdfkitWrapper.instance ===> ', this.pspdfkitWrapper.instance);
 
         let toolbarItems = instance.toolbarItems;
@@ -65,7 +87,7 @@
     },
     methods: {
       cardClicked(item) {
-        item.metadata.isOpen = !item.metadata.isOpen;
+        item.customData.isOpen = !item.customData.isOpen;
       },
       delay(millisec) {
         return new Promise(resolve => {
@@ -172,12 +194,26 @@
 
       annotationsCreate(annotations) {
         console.log('annotations.create ===> ', annotations);
+        annotations.forEach(annotation => {
+          const index = this.findAnnotationIndexById(annotation.id);
+          console.log('annotations.create log ===> ', index, !annotation.id.includes('highlight-'));
+          if(index < 0 && !annotation.id.includes('highlight-')) {
+            this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
+              customData: {
+                isOpen: false,
+                isAttached: true,
+                currentTextSelection: null,
+                type: 'unknown'
+              }
+            }});
+          }
+        });
       },
 
       annotationsUpdate(annotations) {
         console.log('annotations.update ===> ', annotations);
         annotations.forEach(annotation => {
-          const annotationById = this.getAnnotationById(annotation.id);
+          const annotationById = this.findAnnotationIndexById(annotation.id);
           const index = this.findAnnotationIndexById(annotation.id);
 
           this.pspdfkitWrapper.listOfAnnotation.splice(index, 1, {...annotationById, ...annotation.toJS()});
@@ -188,7 +224,7 @@
         console.log('annotations.delete ===> ', annotations);
         annotations.forEach(annotation => {
           const annotationById = this.getAnnotationById(annotation.id);
-          annotationById.metadata.isAttached = false;
+          if(annotationById) annotationById.customData.isAttached = false;
         });
       },
 
@@ -212,19 +248,18 @@
       },
 
       async toggleAnnotation(selectedAnnotation, completeRemove = false) {
-        if(selectedAnnotation.metadata.isAttached || completeRemove) {
+        if(selectedAnnotation.customData.isAttached || completeRemove) {
           let annotation = await this.getNativeAnnotationById(selectedAnnotation.id);
           if(annotation) {
             await this.pspdfkitWrapper.instance.delete(annotation);
-            selectedAnnotation.metadata.isAttached = false;
           }
 
           if(completeRemove) {
             this.pspdfkitWrapper.listOfAnnotation = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id !== selectedAnnotation.id);
           }
         } else {
-          this.currentTextSelection = selectedAnnotation.metadata.currentTextSelection;
-          this.onContextMenuSelection(selectedAnnotation.metadata.type, selectedAnnotation.id);
+          this.currentTextSelection = selectedAnnotation.customData.currentTextSelection;
+          this.onContextMenuSelection(selectedAnnotation.customData.type || null, selectedAnnotation.id);
         }
       },
 
@@ -314,24 +349,26 @@
 
             let params = {
               ...existingAnnotationParams,
-              ...{ rects, color: this.getColorByAction(fromAction) }
+              ...{
+                rects,
+                color: this.getColorByAction(fromAction),
+                customData: {
+                  isOpen: false,
+                  isAttached: true,
+                  currentTextSelection: this.currentTextSelection,
+                  type: fromAction
+                }
+              }
             };
 
             let annotation = await this.createHighlightAnnotation(params);
             this.pspdfkitWrapper.instance.create(annotation);
 
             if(!id) {
-              this.pspdfkitWrapper.listOfAnnotation.push({...annotation.toJS(), ...{
-                metadata: {
-                  isOpen: false,
-                  isAttached: true,
-                  currentTextSelection: this.currentTextSelection,
-                  type: fromAction
-                }
-              }});
+              this.pspdfkitWrapper.listOfAnnotation.push(annotation.toJS());
             } else {
               let temp = this.pspdfkitWrapper.listOfAnnotation.filter(annotation => annotation.id === id)[0];
-              temp.metadata.isAttached = true;
+              temp.customData.isAttached = true;
             }
           }
           break;
@@ -357,8 +394,9 @@
           }
           break;
 
-          default:
-          console.log('This should never happen !!!');
+          default: {
+            // this.onContextMenuSelection('highlight', id, 'unknown');
+          }
           break;
         }
 
