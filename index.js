@@ -121,14 +121,20 @@
           let rectsObject = this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(rects).toJS();
           this.currentTextSelection['calculatedRect'] = rectsObject;
 
+          const pageInfo = this.pspdfkitWrapper.instance.pageInfoForIndex(this.pspdfkitWrapper.instance.viewState.currentPageIndex)
+          let contextMenuDimentions = {
+            width: 80,
+            height: 115
+          };
+
           let customMenu = this.generateMenuElement();
           let item = new this.pspdfkitWrapper.PSPDFKit.CustomOverlayItem({
             id: "custom-pspdfkit-tooltip-overlay",
             node: customMenu,
             pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
             position: new this.pspdfkitWrapper.PSPDFKit.Geometry.Point({
-              x: rectsObject.left + rectsObject.width,
-              y: rectsObject.top
+              x: (rectsObject.left + rectsObject.width + contextMenuDimentions.width) > pageInfo.width ? (rectsObject.left - contextMenuDimentions.width) : rectsObject.left + rectsObject.width,
+              y: (rectsObject.top + contextMenuDimentions.height) > pageInfo.height ? (rectsObject.top - contextMenuDimentions.height) : rectsObject.top
             }),
             onAppear: () => {
               console.log("custom menu appeared !!!");
