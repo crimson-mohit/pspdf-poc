@@ -25,21 +25,24 @@
           <div class="container__top">
 
             <div class="accordion" style="width: 100%;">
-              <ul class="list-group">
+              <ul class="list-group" v-if="pspdfkitWrapper.listOfAnnotation.length">
                 <li class="list-group-item" v-for="(item, index) in pspdfkitWrapper.listOfAnnotation" :key="item.type">
                   <div class="d-flex justify-content-between align-items-center">
-                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.id }}</span>
+                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.type }}</span>
                     <span>
-                      <span class="badge badge-pill" :class="item.customData.isAttached ? 'badge-success' : 'badge-danger'" style="cursor: pointer;" @click.stop="toggleAnnotation(item, false)">
-                        {{ item.customData.isAttached ? 'Attached' : 'Attach'}}
+                      <span class="badge badge-pill" :class="item.flags && item.flags.includes('noView') ? 'badge-danger' : 'badge-success'" style="cursor: pointer;" @click="toggleAnnotationVisibility(item.id)">
+                        {{ item.flags && item.flags.includes('noView') ? 'Hide' : 'Visible' }}
                       </span>
-                      <span class="badge badge-pill badge-secondary" style="cursor: pointer;" @click.stop="toggleAnnotation(item, true)">
+                      <span class="badge badge-pill badge-warning" style="cursor: pointer;" @click="setSelectedAnnotation(item.id)">
+                        Select
+                      </span>
+                      <span class="badge badge-pill badge-secondary" style="cursor: pointer;" @click="deleteAnnotation(item.id)">
                         X
                       </span>
                     </span>
 
                   </div>
-                  <div v-show="item.customData.isOpen" style="border-top: 1px solid rgb(238, 238, 238); padding-top: 5px; margin-top: 5px;">
+                  <div v-show="item.customData && item.customData.isOpen" style="border-top: 1px solid rgb(238, 238, 238); padding-top: 5px; margin-top: 5px;">
                     <pre>{{ item }}</pre>
                   </div>
                 </li>
@@ -75,6 +78,7 @@
 
 
   <script src="./resizer.js"></script>
-  <script src="./index.js"></script>
+  <!-- <script src="./index-v1.js"></script> -->
+  <script src="./index-v2.js"></script>
 </body>
 </html>

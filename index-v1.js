@@ -423,24 +423,25 @@
         `;
 
         return customMenu;
-      },
-
-      beforeUnmount() {
-        this.pspdfkitWrapper.instance.contentDocument.removeEventListener("mouseup", this.contentDocumentMouseup);
-        this.pspdfkitWrapper.instance.removeEventListener("textSelection.change", this.textSelectionChange);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.load", this.annotationsLoad);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.willChange", this.annotationsWillChange);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.change", this.annotationsChange);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.create", this.annotationsCreate);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.update", this.annotationsUpdate);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.delete", this.annotationsDelete);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.press", this.annotationsPress);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.blur", this.annotationsBlur);
-        this.pspdfkitWrapper.instance.removeEventListener("annotations.focus", this.annotationsFocus);
-
-        this.pspdfkitWrapper.PSPDFKit.unload(this.pspdfkitWrapper.pspdfConfiguration.container);
       }
     },
+
+    beforeUnmount() {
+      this.pspdfkitWrapper.instance.contentDocument.removeEventListener("mouseup", this.contentDocumentMouseup);
+      this.pspdfkitWrapper.instance.removeEventListener("textSelection.change", this.textSelectionChange);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.load", this.annotationsLoad);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.willChange", this.annotationsWillChange);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.change", this.annotationsChange);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.create", this.annotationsCreate);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.update", this.annotationsUpdate);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.delete", this.annotationsDelete);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.press", this.annotationsPress);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.blur", this.annotationsBlur);
+      this.pspdfkitWrapper.instance.removeEventListener("annotations.focus", this.annotationsFocus);
+
+      this.pspdfkitWrapper.PSPDFKit.unload(this.pspdfkitWrapper.pspdfConfiguration.container);
+    },
+
     unmounted() {
       console.log('unmounted ===> ', this.pspdfkitWrapper);
       alert('unmounted');
