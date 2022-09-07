@@ -1,9 +1,12 @@
 (() => {
   const COLORS = {
     'highlight': PSPDFKit.Color.YELLOW,
-    'note': PSPDFKit.Color.RED,
-    'comment': PSPDFKit.Color.ORANGE,
-    'link': PSPDFKit.Color.PINK
+    'highlight-note': PSPDFKit.Color.RED,
+    'highlight-comment': PSPDFKit.Color.ORANGE,
+    'strikeout': PSPDFKit.Color.PINK,
+    'underline': PSPDFKit.Color.BLACK,
+    'squiggly': PSPDFKit.Color.BLUE,
+    'redaction': PSPDFKit.Color.GREEN
   };
 
   new Vue({
@@ -19,7 +22,8 @@
           styleSheets: [
             "./assets/custom-pspdfkit.css"
           ],
-          disableTextSelection: false
+          disableTextSelection: false,
+          instant: true
         },
         toolbarItems: [],
         listOfAnnotation: [],
@@ -43,6 +47,56 @@
       this.loadPSPDFKit(this.pspdfkitWrapper.pspdfConfiguration.container).then(async (instance) => {
         console.log('this.pspdfkitWrapper.instance ===> ', instance);
 
+        const userAvatarTemplates = {};
+        const commentAvatars = {};
+
+        const creator = window.prompt("Choose a user name for commenting. By setting the username to 'Admin' you can edit all the comments.");
+
+        const _finalCreatorName =
+        creator || `Anonymous_${parseInt(Math.random() * 10000)}`;
+
+        instance.setAnnotationCreatorName(_finalCreatorName);
+
+        instance.setIsEditableComment((comment) =>
+        (creator && creator.toLowerCase() === "admin") ||
+        comment.creatorName === _finalCreatorName ||
+        comment.pageIndex === null // always allow the user to add new comments
+        );
+
+        instance.setIsEditableAnnotation((annotation) =>
+        !(annotation instanceof PSPDFKit.Annotations.CommentMarkerAnnotation) ||
+        annotation.creatorName === _finalCreatorName
+        );
+
+        instance.setCustomRenderers({
+          CommentAvatar: ({ comment }) => {
+            let commentAvatar = commentAvatars[comment.id];
+
+            // Cache avatars so that they are not recreated on every update.
+            if (!commentAvatar) {
+              let userAvatarTemplate = userAvatarTemplates[comment.creatorName];
+
+              // This is a template avatar image for a specific creatorName.
+              // In a real world application you might want to cache by a userId.
+              if (!userAvatarTemplate) {
+                userAvatarTemplate = instance.contentDocument.createElement("img");
+                userAvatarTemplate.src = "./assets/avatar.png";
+                userAvatarTemplates[comment.creatorName] = userAvatarTemplate;
+              }
+
+              // Every comment needs its own image element even though the image
+              // belongs to the same user - that's why we clone the template.
+              commentAvatar = userAvatarTemplate.cloneNode();
+              commentAvatars[comment.id] = commentAvatar;
+            }
+
+            return {
+              node: commentAvatar,
+              append: false,
+            };
+          },
+        });
+
         this.$emit("loaded", instance);
         this.pspdfkitWrapper.instance = instance;
         this.pspdfkitWrapper.listOfAnnotation = await this.getExportInstantJSON();
@@ -53,6 +107,10 @@
         // instance.setViewState(newState);
 
         let toolbarItems = instance.toolbarItems;
+        toolbarItems.splice(toolbarItems.findIndex((item) => item.type === "spacer") + 1,
+        0,
+        { type: "comment" }
+        );
         this.pspdfkitWrapper.toolbarItems = toolbarItems.map(v => ({...v, isSelected: true}));
         instance.setToolbarItems(this.pspdfkitWrapper.toolbarItems);
 
@@ -210,69 +268,101 @@
         customMenu.className = "custom-pspdfkit-tooltip-overlay"
         customMenu.innerHTML = `
         <ul id="context-menu">
-        <li data-id="highlight">Highlight</li>
-        <li data-id="note">Note</li>
-        <li data-id="comment">Comment</li>
-        <li data-id="link">Link</li>
+        <li data-id="">
+        <div data-id="strikeout">S</div>
+        <div data-id="underline">U</div>
+        <div data-id="squiggly">SQ</div>
+        <div data-id="comment">C</div>
+        <div data-id="redaction">R</div>
+        </li>
         <li data-id="copy">Copy</li>
+        <li data-id="note">Note</li>
+        <li data-id="" style="font-weight: 700; font-size: 16px; line-height: 24px; color: #FFFFFF; margin: 0;">Related to your selection</li>
+        <li data-id="d&m">Definition & Meaning</li>
+        <li data-id="cfyc">Compare from your collection</li>
+        <li data-id="rp">Research papers</li>
+        <li data-id="or">Other Resources</li>
         </ul>
         `;
 
         return customMenu;
       },
 
-      async createHighlightAnnotation(params) {
-        let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation({
+      prepAnnotationParams(type) {
+        let annotationsLength = this.pspdfkitWrapper.listOfAnnotation.length;
+        var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
+          new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.rect)
+        ]);
+
+        let params = {
+          id: `${type}-${annotationsLength}`,
+          rects,
           pageIndex: this.pspdfkitWrapper.instance.viewState.currentPageIndex,
-          boundingBox: this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(params.rects),
+          boundingBox: this.pspdfkitWrapper.PSPDFKit.Geometry.Rect.union(rects),
           isEditable: true,
           isDeletable: true,
           opacity: 0.7,
           noView: false, // hide annotation
-          ...params, // overwrite fields
-          rects: params.rects,
-          color: params.color
-        });
+          color: this.getColorByAction(type),
+          customData: {
+            isOpen: false,
+            currentTextSelection: this.currentTextSelection,
+            type
+          }
+        };
 
-        return annotation;
+        return params;
       },
 
-      async onContextMenuSelection(action, id = null, fromAction = 'highlight') {
+      async onContextMenuSelection(action) {
         switch (action) {
           case 'highlight': {
-            let annotationsLength = this.pspdfkitWrapper.listOfAnnotation.length;
-            var rects = this.pspdfkitWrapper.PSPDFKit.Immutable.List([
-              new this.pspdfkitWrapper.PSPDFKit.Geometry.Rect(this.currentTextSelection.rect)
-            ]);
+            let params = this.prepAnnotationParams(action);
+            let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation(params);
+            this.pspdfkitWrapper.instance.create(annotation);
+          }
+          break;
 
-            let params = {
-              id: `highlight-${fromAction}-${annotationsLength}`,
-              rects,
-              color: this.getColorByAction(fromAction),
-              customData: {
-                isOpen: false,
-                currentTextSelection: this.currentTextSelection,
-                type: fromAction
-              }
-            };
+          case 'strikeout': {
+            let params = this.prepAnnotationParams(action);
+            let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.StrikeOutAnnotation(params);
+            this.pspdfkitWrapper.instance.create(annotation);
+          }
+          break;
 
-            let annotation = await this.createHighlightAnnotation(params);
+          case 'underline': {
+            let params = this.prepAnnotationParams(action);
+            let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.UnderlineAnnotation(params);
+            this.pspdfkitWrapper.instance.create(annotation);
+          }
+          break;
+
+          case 'squiggly': {
+            let params = this.prepAnnotationParams(action);
+            let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.SquiggleAnnotation(params);
+            this.pspdfkitWrapper.instance.create(annotation);
+          }
+          break;
+
+          case 'redaction': {
+            let params = this.prepAnnotationParams(action);
+            let annotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.RedactionAnnotation(params);
             this.pspdfkitWrapper.instance.create(annotation);
           }
           break;
 
           case 'note': {
-            this.onContextMenuSelection('highlight', id, 'note');
+            let params = this.prepAnnotationParams(`highlight-${action}`);
+            params['note'] = 'Without default text note can not be created by API';
+            let highlightAnnotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation(params);
+            this.pspdfkitWrapper.instance.create(highlightAnnotation);
           }
           break;
 
           case 'comment': {
-            this.onContextMenuSelection('highlight', id, 'comment');
-          }
-          break;
-
-          case 'link': {
-            this.onContextMenuSelection('highlight', id, 'link');
+            let params = this.prepAnnotationParams(`highlight-${action}`);
+            let highlightAnnotation = new this.pspdfkitWrapper.PSPDFKit.Annotations.HighlightAnnotation(params);
+            this.pspdfkitWrapper.instance.create(highlightAnnotation);
           }
           break;
 
@@ -338,8 +428,8 @@
 
           const pageInfo = this.pspdfkitWrapper.instance.pageInfoForIndex(this.pspdfkitWrapper.instance.viewState.currentPageIndex)
           let contextMenuDimentions = {
-            width: 80,
-            height: 115
+            width: 225,
+            height: 261
           };
 
           let customMenu = this.generateMenuElement();

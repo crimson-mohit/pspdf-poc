@@ -9,25 +9,42 @@
 }
 */
 
-/* .PSPDFKit-Popover-Text-Markup-Toolbar {
+.PSPDFKit-Popover-Text-Markup-Toolbar {
   display: none !important;
-} */
+}
 
 #context-menu {
+  width: fit-content;
+  background: #3D464D;
   list-style: none;
   padding: 0;
-  background-color: grey;
   font-size: 10px;
   border: none;
   margin: 0;
+  padding: 4px;
+  border-radius: 8px;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
 }
 #context-menu > li {
-  padding: 0px 15px;
-  background-color: #FFFFFF;
+  background: #3D464D;
+  color: #BAC3CD;
+  padding: 8px 16px;
 }
-#context-menu > li:hover {
+#context-menu > li:not(:first-child):hover, #context-menu li > div:hover {
   background-color: #3e8e41;
   color: white;
   cursor: pointer;
 }
-
+#context-menu > li:first-child {
+  display: flex;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+#context-menu > li:first-child > div {
+  text-align: center;
+  height: 25px;
+  width: 38px;
+}

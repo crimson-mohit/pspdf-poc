@@ -28,7 +28,10 @@
               <ul class="list-group" v-if="pspdfkitWrapper.listOfAnnotation.length">
                 <li class="list-group-item" v-for="(item, index) in pspdfkitWrapper.listOfAnnotation" :key="item.type">
                   <div class="d-flex justify-content-between align-items-center">
-                    <span style="cursor: pointer;" @click="cardClicked(item)">{{ item.type }}</span>
+                    <span v-if="item.customData && item.customData.type" style="cursor: pointer;" @click="cardClicked(item)">
+                      {{ item.customData.type.includes('from/toolbar') ? 'toolbar-' + item.type.split('/').pop() : item.customData.type }}
+                    </span>
+                    <span v-else style="cursor: pointer;" @click="cardClicked(item)">{{ item.type }}</span>
                     <span>
                       <span class="badge badge-pill" :class="item.flags && item.flags.includes('noView') ? 'badge-danger' : 'badge-success'" style="cursor: pointer;" @click="toggleAnnotationVisibility(item.id)">
                         {{ item.flags && item.flags.includes('noView') ? 'Hide' : 'Visible' }}
