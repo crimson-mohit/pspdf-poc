@@ -269,6 +269,7 @@
         customMenu.innerHTML = `
         <ul id="context-menu">
         <li data-id="">
+        <div data-id="highlight">H</div>
         <div data-id="strikeout">S</div>
         <div data-id="underline">U</div>
         <div data-id="squiggly">SQ</div>
